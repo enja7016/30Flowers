@@ -69,6 +69,17 @@ npm test
 npm run lint
 ```
 
+## Deploy to GitHub Pages
+
+This repository includes a workflow at `.github/workflows/deploy-pages.yml` that builds and deploys the site to GitHub Pages when you push to `main`.
+
+1. Push this project to GitHub.
+2. In your repo, go to **Settings -> Pages**.
+3. Under **Build and deployment**, set **Source** to **GitHub Actions**.
+4. Push to `main` (or manually run the workflow from the Actions tab).
+
+After deployment, GitHub shows the public URL in the workflow summary and in **Settings -> Pages**.
+
 ## Project structure
 
 - `app/layout.tsx` - root layout and metadata
