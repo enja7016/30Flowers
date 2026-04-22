@@ -1,14 +1,25 @@
 # Idea configs
-.idea
+.idea/
 
 # Node modules
-node_modules
+node_modules/
 
 # MacOS files
 .DS_Store
 
 # Logs
-npm-debug.log*, yarn-debug.log*, yarn-error.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Env files
-.env, .env.*
+.env
+.env.*
+!.env.example
+
+# Next.js build output
+.next/
+out/
+
+# Coverage
+coverage/

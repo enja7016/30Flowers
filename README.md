@@ -1,17 +1,19 @@
 # 30Flowers
 
-A small Node.js web app that serves a birthday-themed interactive page with 30 clickable flowers. Each flower opens a memory modal and updates progress until all 30 are opened.
+30Flowers is an interactive birthday web app built with Next.js, Tailwind CSS, and TypeScript. It shows a garden of 30 clickable flowers; each flower opens a memory and updates progress.
 
-## What this project is
+## Tech stack
 
-- Frontend: plain HTML, CSS, and JavaScript (`index.html`, `style.css`, `script.js`)
-- Backend: a lightweight Node HTTP server (`server.js`) that serves static files
-- Default local URL: `http://localhost:3000`
+- Next.js (App Router)
+- React
+- TypeScript
+- Tailwind CSS
+- Jest + Testing Library
 
 ## Prerequisites
 
-- Node.js 18+ (recommended)
-- npm (comes with Node.js)
+- Node.js 18.18+ (Node.js 20 LTS recommended)
+- npm
 
 ## Install
 
@@ -19,63 +21,64 @@ A small Node.js web app that serves a birthday-themed interactive page with 30 c
 npm install
 ```
 
-## Run (development)
+## Development
 
-The project uses `nodemon` via the `start` script for auto-reload while developing:
+Start the dev server:
 
 ```bash
-npm start
+npm run dev
 ```
 
-Then open:
+Open:
 
 ```text
 http://localhost:3000
 ```
 
-You can override the port with `PORT`:
+Use a custom port:
 
 ```bash
-PORT=4000 npm start
+PORT=4000 npm run dev
 ```
 
-## Build
+## Build and run (production)
 
-There is currently no `build` script in `package.json`.
-
-To check available scripts:
-
-```bash
-npm run
-```
-
-If you later add a build step, run it with:
+Create a production build:
 
 ```bash
 npm run build
 ```
 
-## Test (npm)
-
-There is currently no `test` script in `package.json`.
-
-Safe command that only runs tests if a test script exists:
+Start the production server:
 
 ```bash
-npm run test --if-present
+npm run start
 ```
 
-If you add tests later, use:
+## Test with npm
+
+Run the test suite:
 
 ```bash
 npm test
 ```
 
+## Lint
+
+```bash
+npm run lint
+```
+
 ## Project structure
 
-- `index.html` - main page
-- `style.css` - styles and layout
-- `script.js` - flower interactions, modal behavior, progress tracking
-- `server.js` - Node HTTP server for static file serving
-- `images/` - optional memory assets
+- `app/layout.tsx` - root layout and metadata
+- `app/page.tsx` - home route
+- `app/globals.css` - Tailwind and global styles
+- `components/flower-garden.tsx` - interactive UI logic
+- `data/memories.ts` - memory content
+- `__tests__/flower-garden.test.tsx` - basic interaction test
+
+## Notes
+
+- Legacy static files were removed after the Next.js migration.
 
