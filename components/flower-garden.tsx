@@ -1,7 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState } from "react";
 import { fallbackMemory, memories, type Memory } from "@/data/memories";
+import flowerImage from "@/images/flower1.png";
 
 type Position = {
   top: string;
@@ -12,8 +14,9 @@ const FLOWER_COUNT = 30;
 
 function createPositions(total: number): Position[] {
   return Array.from({ length: total }, () => ({
-    top: `${Math.random() * 88 + 2}%`,
-    left: `${Math.random() * 88 + 2}%`,
+    // Keep larger flowers within bounds of the garden container.
+    top: `${Math.random() * 58 + 2}%`,
+    left: `${Math.random() * 58 + 2}%`,
   }));
 }
 
@@ -62,10 +65,17 @@ export function FlowerGarden() {
                   data-testid={`flower-${id}`}
                   aria-label={`Open memory ${id}`}
                   onClick={() => openMemory(id)}
-                  className="absolute h-12 w-12 rounded-full border border-pink-200 bg-pink-100 text-xs font-medium text-pink-700 shadow transition hover:scale-105"
+                  className="absolute h-36 w-36 appearance-none border-0 bg-transparent p-0 transition hover:scale-110"
                   style={position}
                 >
-                  Flower {id}
+                  <Image
+                    src={flowerImage}
+                    alt=""
+                    fill
+                    sizes="144px"
+                    className="object-contain"
+                    priority={id <= 3}
+                  />
                 </button>
               );
             })}
