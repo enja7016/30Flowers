@@ -11,6 +11,11 @@ import flower5 from "@/images/flowers/flower5.png";
 import flower6 from "@/images/flowers/flower6.png";
 
 const flowerImages = [flower1, flower2, flower3, flower4, flower5, flower6];
+const publicBasePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
+function withBasePath(path: string): string {
+  return path.startsWith("/") ? `${publicBasePath}${path}` : path;
+}
 
 type Position = {
   top: string;
@@ -209,7 +214,7 @@ export function FlowerGarden() {
                 data-testid="hidden-memory"
               >
                 <Image
-                  src="/memories/grinch.jpg"
+                  src={withBasePath("/memories/grinch.jpg")}
                   alt="Hidden memory"
                   fill
                   sizes="(max-width: 768px) 100vw, 672px"
@@ -275,7 +280,7 @@ export function FlowerGarden() {
               <div className="absolute left-1/2 top-1/2 h-80 w-80 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg border-4 border-white shadow-md">
                   {activeMemory.memory.img ? (
                     <Image
-                      src={activeMemory.memory.img}
+                      src={withBasePath(activeMemory.memory.img)}
                       alt="Memory"
                       fill
                       sizes="320px"
