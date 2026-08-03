@@ -3,12 +3,12 @@
 import Image from "next/image";
 import { useMemo, useState } from "react";
 import { fallbackMemory, memories, type Memory } from "@/data/memories";
-import flower1 from "@/images/flower1.png";
-import flower2 from "@/images/flower2.png";
-import flower3 from "@/images/flower3.png";
-import flower4 from "@/images/flower4.png";
-import flower5 from "@/images/flower5.png";
-import flower6 from "@/images/flower6.png";
+import flower1 from "@/images/flowers/flower1.png";
+import flower2 from "@/images/flowers/flower2.png";
+import flower3 from "@/images/flowers/flower3.png";
+import flower4 from "@/images/flowers/flower4.png";
+import flower5 from "@/images/flowers/flower5.png";
+import flower6 from "@/images/flowers/flower6.png";
 
 const flowerImages = [flower1, flower2, flower3, flower4, flower5, flower6];
 
@@ -16,6 +16,11 @@ type Position = {
   top: string;
   left: string;
   flower: (typeof flowerImages)[number];
+};
+
+type ActiveMemory = {
+  memory: Memory;
+  flower: Position["flower"];
 };
 
 const FLOWER_COUNT = 30;
@@ -73,16 +78,39 @@ function createPositions(total: number): Position[] {
 export function FlowerGarden() {
   const [started, setStarted] = useState(false);
   const [openedIds, setOpenedIds] = useState<number[]>([]);
-  const [activeMemory, setActiveMemory] = useState<Memory | null>(null);
+  const [shrinkingIds, setShrinkingIds] = useState<number[]>([]);
+  const [hiddenIds, setHiddenIds] = useState<number[]>([]);
+  const [activeMemory, setActiveMemory] = useState<ActiveMemory | null>(null);
+  const [isMemoryVisible, setIsMemoryVisible] = useState(false);
   const positions = useMemo(() => createPositions(FLOWER_COUNT), []);
+  const shrinkDurationMs = 300;
 
   const progressText = `${openedIds.length} / ${FLOWER_COUNT}`;
   const allUnlocked = openedIds.length === FLOWER_COUNT;
 
   const openMemory = (id: number) => {
     const memory = memories[id] ?? fallbackMemory;
-    setActiveMemory(memory);
+    const flower = positions[id - 1]?.flower ?? flower1;
+    setActiveMemory({ memory, flower });
+    setIsMemoryVisible(false);
+    window.requestAnimationFrame(() => {
+      setIsMemoryVisible(true);
+    });
     setOpenedIds((previous) => (previous.includes(id) ? previous : [...previous, id]));
+
+    // Animate the clicked flower out before removing it from layout.
+    setShrinkingIds((previous) => (previous.includes(id) ? previous : [...previous, id]));
+    window.setTimeout(() => {
+      setHiddenIds((previous) => (previous.includes(id) ? previous : [...previous, id]));
+      setShrinkingIds((previous) => previous.filter((flowerId) => flowerId !== id));
+    }, shrinkDurationMs);
+  };
+
+  const closeMemory = () => {
+    setIsMemoryVisible(false);
+    window.setTimeout(() => {
+      setActiveMemory(null);
+    }, shrinkDurationMs);
   };
 
   return (
@@ -101,13 +129,20 @@ export function FlowerGarden() {
         </section>
       ) : (
         <section className="w-full space-y-4">
-          <div className="text-center text-lg font-semibold" data-testid="progress">
+          <div className="pb-2 pt-4 text-center text-2xl font-bold" data-testid="progress">
             {progressText}
           </div>
 
           <div className="relative mx-auto aspect-square w-full max-w-2xl overflow-visible rounded-2xl bg-white/80 shadow-lg" data-testid="garden">
             {positions.map((position, index) => {
               const id = index + 1;
+              const isShrinking = shrinkingIds.includes(id);
+              const isHidden = hiddenIds.includes(id);
+
+              if (isHidden) {
+                return null;
+              }
+
               return (
                   <button
                       key={id}
@@ -115,7 +150,10 @@ export function FlowerGarden() {
                       data-testid={`flower-${id}`}
                       aria-label={`Open memory ${id}`}
                       onClick={() => openMemory(id)}
-                      className="absolute h-52 w-52 appearance-none border-0 bg-transparent p-0 transition hover:scale-110"
+                      disabled={isShrinking}
+                      className={`absolute h-52 w-52 appearance-none border-0 bg-transparent p-0 transition-transform duration-300 ${
+                        isShrinking ? "scale-0 opacity-0" : "hover:scale-110"
+                      }`}
                       style={{ top: position.top, left: position.left }}
                   >
                     <Image
@@ -140,20 +178,37 @@ export function FlowerGarden() {
       )}
 
       {activeMemory ? (
-        <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/45 p-4" role="dialog" aria-modal="true">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <p className="text-slate-800">{activeMemory.text}</p>
-            {activeMemory.img ? (
-              <img
-                src={activeMemory.img}
-                alt="Memory"
-                className="mt-4 max-h-64 w-full rounded-lg object-cover"
-              />
-            ) : null}
+        <div
+          className={`fixed inset-0 z-10 flex items-center justify-center bg-black/45 p-4 transition-opacity duration-300 ${
+            isMemoryVisible ? "opacity-100" : "opacity-0"
+          }`}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className={`w-full max-w-md p-6 transition-all duration-300 ${
+              isMemoryVisible ? "scale-100 opacity-100" : "scale-95 opacity-0"
+            }`}
+          >
+            <div className="mx-auto flex w-full max-w-sm flex-col items-center">
+              <div className="relative h-screen w-screen max-h-96 max-w-96">
+                <Image src={activeMemory.flower} alt="Selected flower" fill className="object-contain" />
+                <div className="absolute left-1/2 top-1/2 h-56 w-56 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg border-4 border-white shadow-md">
+                  {activeMemory.memory.img ? (
+                    <img src={activeMemory.memory.img} alt="Memory" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-pink-50 px-2 text-center text-xs text-slate-500">
+                      Add memory image
+                    </div>
+                  )}
+                </div>
+              </div>
+              <p className="mt-3 w-full rounded-lg bg-rose-50 p-4 text-slate-800 shadow-sm">{activeMemory.memory.text}</p>
+            </div>
             <button
               type="button"
-              onClick={() => setActiveMemory(null)}
-              className="mt-6 rounded-full bg-plum px-5 py-2 font-semibold text-white"
+              onClick={closeMemory}
+              className="mx-auto mt-6 block rounded-full bg-plum px-5 py-2 font-semibold text-white"
             >
               Close
             </button>
