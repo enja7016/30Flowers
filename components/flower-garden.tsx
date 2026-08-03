@@ -18,13 +18,18 @@ type Position = {
   flower: (typeof flowerImages)[number];
 };
 
+export type FlowerCell = {
+  row: number;
+  col: number;
+  flowerIndex: number;
+};
+
 type ActiveMemory = {
   memory: Memory;
   flower: Position["flower"];
 };
 
 const FLOWER_COUNT = 30;
-const COPIES_PER_FLOWER = FLOWER_COUNT / flowerImages.length;
 
 function shuffle<T>(array: T[]): T[] {
   const result = [...array];
@@ -35,19 +40,44 @@ function shuffle<T>(array: T[]): T[] {
   return result;
 }
 
-function createPositions(total: number): Position[] {
-  const deck = shuffle(
-      flowerImages.flatMap((flower) => Array(COPIES_PER_FLOWER).fill(flower))
+function getSafeRowShifts(columnCount: number): number[] {
+  const shifts = Array.from({ length: columnCount - 1 }, (_, index) => index + 1).filter(
+    (shift) => shift !== 1 && shift !== columnCount - 1
   );
 
-  const cols = 6;
+  return shifts.length > 0 ? shifts : [1];
+}
+
+export function createFlowerCells(total: number): FlowerCell[] {
+  const cols = flowerImages.length;
   const rows = Math.ceil(total / cols);
-  const cells = shuffle(
-      Array.from({ length: rows * cols }, (_, i) => ({
-        col: i % cols,
-        row: Math.floor(i / cols),
-      }))
-  );
+  const baseRow = shuffle(Array.from({ length: cols }, (_, index) => index));
+  const safeRowShifts = getSafeRowShifts(cols);
+  const rowOffsets: number[] = [0];
+
+  for (let rowIndex = 1; rowIndex < rows; rowIndex++) {
+    const previousOffset = rowOffsets[rowIndex - 1];
+    const shift = safeRowShifts[Math.floor(Math.random() * safeRowShifts.length)];
+    rowOffsets.push((previousOffset + shift) % cols);
+  }
+
+  return Array.from({ length: total }, (_, index) => {
+    const row = Math.floor(index / cols);
+    const col = index % cols;
+    const offset = rowOffsets[row];
+
+    return {
+      row,
+      col,
+      flowerIndex: baseRow[(col + offset) % cols],
+    };
+  });
+}
+
+function createPositions(total: number): Position[] {
+  const cells = createFlowerCells(total);
+  const cols = flowerImages.length;
+  const rows = Math.ceil(total / cols);
 
   // Use a range wider than 0-100% so flowers spill past the box edges,
   // hiding the border. Flower button is 144px (h-36/w-36), so position
@@ -60,17 +90,16 @@ function createPositions(total: number): Position[] {
   const cellHeight = span / rows;
   const jitter = 0.1;
 
-  return Array.from({ length: total }, (_, index) => {
-    const cell = cells[index];
+  return shuffle(cells).map((cell) => {
     const top =
-        rangeStart + cell.row * cellHeight + Math.random() * cellHeight * jitter;
+      rangeStart + cell.row * cellHeight + Math.random() * cellHeight * jitter;
     const left =
-        rangeStart + cell.col * cellWidth + Math.random() * cellWidth * jitter;
+      rangeStart + cell.col * cellWidth + Math.random() * cellWidth * jitter;
 
     return {
       top: `${top}%`,
       left: `${left}%`,
-      flower: deck[index],
+      flower: flowerImages[cell.flowerIndex],
     };
   });
 }
@@ -82,14 +111,18 @@ export function FlowerGarden() {
   const [hiddenIds, setHiddenIds] = useState<number[]>([]);
   const [activeMemory, setActiveMemory] = useState<ActiveMemory | null>(null);
   const [isMemoryVisible, setIsMemoryVisible] = useState(false);
+  const [showHiddenMemory, setShowHiddenMemory] = useState(false);
+  const [isHiddenMemoryVisible, setIsHiddenMemoryVisible] = useState(false);
   const positions = useMemo(() => createPositions(FLOWER_COUNT), []);
   const shrinkDurationMs = 300;
 
-  const progressText = `${openedIds.length} / ${FLOWER_COUNT}`;
+  const progressPercent = Math.round((openedIds.length / FLOWER_COUNT) * 100);
   const allUnlocked = openedIds.length === FLOWER_COUNT;
 
   const openMemory = (id: number) => {
-    const memory = memories[id] ?? fallbackMemory;
+    // Always unlock memories by sequence (1..30), independent of which flower is clicked.
+    const nextMemoryNumber = openedIds.length + 1;
+    const memory = memories[nextMemoryNumber] ?? fallbackMemory;
     const flower = positions[id - 1]?.flower ?? flower1;
     setActiveMemory({ memory, flower });
     setIsMemoryVisible(false);
@@ -113,12 +146,19 @@ export function FlowerGarden() {
     }, shrinkDurationMs);
   };
 
+  const revealHiddenMemory = () => {
+    setShowHiddenMemory(true);
+    window.requestAnimationFrame(() => {
+      setIsHiddenMemoryVisible(true);
+    });
+  };
+
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col items-center justify-center gap-6 p-6">
       {!started ? (
         <section className="w-full max-w-xl rounded-2xl bg-white p-8 text-center shadow-lg">
-          <h1 className="text-3xl font-bold text-plum">For your 30th birthday</h1>
-          <p className="mt-3 text-slate-700">I made you an interactive flower garden.</p>
+          <h1 className="text-3xl font-bold text-plum">Till din 30-års dag!</h1>
+          <p className="mt-3 text-slate-700">30 blommor för dig 🌸</p>
           <button
             type="button"
             onClick={() => setStarted(true)}
@@ -129,11 +169,55 @@ export function FlowerGarden() {
         </section>
       ) : (
         <section className="w-full space-y-4">
-          <div className="pb-2 pt-4 text-center text-2xl font-bold" data-testid="progress">
-            {progressText}
-          </div>
+          {!allUnlocked ? (
+            <div className="-mt-2 space-y-2 pb-2 pt-2" data-testid="progress-wrapper">
+              <div className="flex items-center justify-between text-sm font-semibold text-slate-700">
+                <span>Progress</span>
+                <span data-testid="progress-label">{openedIds.length} / {FLOWER_COUNT}</span>
+              </div>
+              <div
+                className="h-3 w-full overflow-hidden rounded-full bg-white/80 shadow-inner"
+                role="progressbar"
+                aria-label="Flower progress"
+                aria-valuemin={0}
+                aria-valuemax={FLOWER_COUNT}
+                aria-valuenow={openedIds.length}
+                data-testid="progress"
+              >
+                <div
+                  className="h-full rounded-full bg-plum transition-all duration-300"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+            </div>
+          ) : !showHiddenMemory ? (
+            <button
+              type="button"
+              onClick={revealHiddenMemory}
+              className="mx-auto mt-4 block rounded-full bg-plum px-6 py-3 font-semibold text-white transition hover:opacity-90"
+            >
+              Reveal hidden memory
+            </button>
+          ) : null}
 
           <div className="relative mx-auto aspect-square w-full max-w-2xl overflow-visible rounded-2xl bg-white/80 shadow-lg" data-testid="garden">
+            {allUnlocked && showHiddenMemory ? (
+              <div
+                className={`absolute inset-0 overflow-hidden rounded-2xl transition-opacity duration-700 ${
+                  isHiddenMemoryVisible ? "opacity-100" : "opacity-0"
+                }`}
+                data-testid="hidden-memory"
+              >
+                <Image
+                  src="/memories/grinch.jpg"
+                  alt="Hidden memory"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 672px"
+                  className="object-cover"
+                />
+              </div>
+            ) : null}
+
             {positions.map((position, index) => {
               const id = index + 1;
               const isShrinking = shrinkingIds.includes(id);
@@ -169,11 +253,6 @@ export function FlowerGarden() {
             })}
           </div>
 
-          {allUnlocked ? (
-            <p className="rounded-lg bg-white/90 p-4 text-center font-medium text-plum">
-              Final message unlocked: You mean everything to me.
-            </p>
-          ) : null}
         </section>
       )}
 
@@ -185,17 +264,23 @@ export function FlowerGarden() {
           role="dialog"
           aria-modal="true"
         >
-          <div
-            className={`w-full max-w-md p-6 transition-all duration-300 ${
-              isMemoryVisible ? "scale-100 opacity-100" : "scale-95 opacity-0"
-            }`}
-          >
-            <div className="mx-auto flex w-full max-w-sm flex-col items-center">
-              <div className="relative h-screen w-screen max-h-96 max-w-96">
-                <Image src={activeMemory.flower} alt="Selected flower" fill className="object-contain" />
-                <div className="absolute left-1/2 top-1/2 h-56 w-56 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg border-4 border-white shadow-md">
+    <div
+          className={`w-full max-w-2xl p-6 transition-all duration-300 ${
+            isMemoryVisible ? "scale-100 opacity-100" : "scale-95 opacity-0"
+          }`}
+        >
+          <div className="mx-auto flex w-full max-w-xl flex-col items-center">
+            <div className="relative h-screen w-screen max-h-[600px] max-w-[600px]">
+              <Image src={activeMemory.flower} alt="Selected flower" fill className="object-contain" />
+              <div className="absolute left-1/2 top-1/2 h-80 w-80 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg border-4 border-white shadow-md">
                   {activeMemory.memory.img ? (
-                    <img src={activeMemory.memory.img} alt="Memory" className="h-full w-full object-cover" />
+                    <Image
+                      src={activeMemory.memory.img}
+                      alt="Memory"
+                      fill
+                      sizes="320px"
+                      className="object-cover"
+                    />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-pink-50 px-2 text-center text-xs text-slate-500">
                       Add memory image
