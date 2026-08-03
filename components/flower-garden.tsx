@@ -12,9 +12,17 @@ import flower6 from "@/images/flowers/flower6.png";
 
 const flowerImages = [flower1, flower2, flower3, flower4, flower5, flower6];
 const publicBasePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+const publicAssetVersion = process.env.NEXT_PUBLIC_ASSET_VERSION || "";
 
 function withBasePath(path: string): string {
-  return path.startsWith("/") ? `${publicBasePath}${path}` : path;
+  const prefixedPath = path.startsWith("/") ? `${publicBasePath}${path}` : path;
+
+  if (!publicAssetVersion) {
+    return prefixedPath;
+  }
+
+  const separator = prefixedPath.includes("?") ? "&" : "?";
+  return `${prefixedPath}${separator}v=${publicAssetVersion}`;
 }
 
 type Position = {
